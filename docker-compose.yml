@@ -1,0 +1,12 @@
+version: '3.3'
+services:
+  postgres-server:
+    image: postgres:alpine
+    volumes:
+      - ./Data Load:/docker-entrypoint-initdb.d
+    restart: always
+    container_name: Dev-PostgreSQL
+    expose:
+      - "5432"
+    ports:
+      - "5432:5432"
