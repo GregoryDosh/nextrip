@@ -173,11 +173,11 @@ type newDetailsType struct {
 }
 
 func mapHelper(stopLat, stopLong, busLat, busLong float64, scale int, size string) string {
-	if GoogleMapsAPIKey != "" {
+	if googleMapsAPIKey != "" {
 		baseURL := fmt.Sprintf("maps.googleapis.com/maps/api/staticmap?markers=color:blue%%7Clabel:S%%7C%[1]f,%[2]f&scale=%[3]d", stopLat, stopLong, scale)
 		busMarker := ""
 		sizeParam := ""
-		keyParm := fmt.Sprintf("&key=%s", GoogleMapsAPIKey)
+		keyParm := fmt.Sprintf("&key=%s", googleMapsAPIKey)
 		if busLat != 0 && busLong != 0 {
 			busMarker = fmt.Sprintf("&markers=%%7Ccolor:green%%7Clabel:B%%7C%[1]f,%[2]f", busLat, busLong)
 		}

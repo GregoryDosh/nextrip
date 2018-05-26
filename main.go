@@ -13,7 +13,8 @@ import (
 
 var (
 	env              metrotransit.Env
-	GoogleMapsAPIKey string
+	googleMapsAPIKey string
+	staticFilePath   string
 )
 
 func main() {
@@ -30,10 +31,17 @@ func main() {
 			EnvVar: "LISTEN_PORT",
 		},
 		cli.StringFlag{
+			Name:        "static-file-path",
+			Usage:       "If defined, this will serve files from specified `path`",
+			Value:       "",
+			EnvVar:      "STATIC_FILE_PATH",
+			Destination: &staticFilePath,
+		},
+		cli.StringFlag{
 			Name:        "google-maps-api-key",
 			Usage:       "Google Maps API key for sharing maps",
 			EnvVar:      "GOOGLE_MAPS_API_KEY",
-			Destination: &GoogleMapsAPIKey,
+			Destination: &googleMapsAPIKey,
 		},
 		cli.StringFlag{
 			Name:   "pg-password",
@@ -102,6 +110,14 @@ func appEntry(c *cli.Context) {
 		log.SetLevel(log.ErrorLevel)
 	case "fatal":
 		log.SetLevel(log.FatalLevel)
+	}
+
+	if staticFilePath != "" {
+		log.Infof("serving files from %s", staticFilePath)
+	}
+
+	if googleMapsAPIKey == "" {
+		log.Warn("Google Maps API Key missing, maps URL won't work.")
 	}
 
 	ds, err := metrotransit.InitDefaultDatastore(pgHost, pgPort, pgUser, pgPassword, pgDb, pgSSLMode)
