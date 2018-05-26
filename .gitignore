@@ -1,1 +1,4 @@
-next-trip
+nextrip
+.envrc
+*.js
+vendor
