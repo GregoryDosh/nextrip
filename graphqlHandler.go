@@ -296,5 +296,7 @@ func graphqlHandler(ctx *fasthttp.RequestCtx) {
 	if pretty != "" {
 		enc.SetIndent("", "    ")
 	}
-	enc.Encode(result)
+	if err := enc.Encode(result); err != nil {
+		log.Error(err)
+	}
 }
