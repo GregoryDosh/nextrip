@@ -108,6 +108,9 @@ var stopType = graphql.NewObject(graphql.ObjectConfig{
 		"update_time": &graphql.Field{
 			Type: graphql.String,
 		},
+		"full_map": &graphql.Field{
+			Type: graphql.String,
+		},
 	},
 })
 
@@ -139,6 +142,7 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 type newStopType struct {
 	Departures []newDepartureType `json:"departures"`
 	Details    newDetailsType     `json:"stop_details"`
+	FullMap    string             `json:"full_map"`
 	StopID     int                `json:"stop_id"`
 	UpdateTime time.Time          `json:"update_time"`
 }
@@ -172,14 +176,17 @@ type newDetailsType struct {
 	WheelchairBoarding int64   `json:"wheelchair_boarding"`
 }
 
-func mapHelper(stopLat, stopLong, busLat, busLong float64, scale int, size string) string {
+func mapHelper(stopLat float64, stopLong float64, busLatLong [][]float64, scale int, size string) string {
 	if googleMapsAPIKey != "" {
 		baseURL := fmt.Sprintf("maps.googleapis.com/maps/api/staticmap?markers=color:blue%%7Clabel:S%%7C%[1]f,%[2]f&scale=%[3]d", stopLat, stopLong, scale)
 		busMarker := ""
 		sizeParam := ""
 		keyParm := fmt.Sprintf("&key=%s", googleMapsAPIKey)
-		if busLat != 0 && busLong != 0 {
-			busMarker = fmt.Sprintf("&markers=%%7Ccolor:green%%7Clabel:B%%7C%[1]f,%[2]f", busLat, busLong)
+		for _, bus := range busLatLong {
+			busLat, busLong := bus[0], bus[1]
+			if busLat != 0 && busLong != 0 {
+				busMarker += fmt.Sprintf("&markers=%%7Ccolor:green%%7Clabel:B%%7C%[1]f,%[2]f", busLat, busLong)
+			}
 		}
 		if size != "" {
 			sizeParam = fmt.Sprintf("&size=%s", size)
@@ -192,7 +199,12 @@ func mapHelper(stopLat, stopLong, busLat, busLong float64, scale int, size strin
 
 func translateDepartureType(o *metrotransit.Stop, scale int, size string) *newStopType {
 	newDepartureList := []newDepartureType{}
+	allBusLatLong := [][]float64{}
 	for _, oldDepart := range o.Departures {
+		busLatLong := [][]float64{
+			{oldDepart.VehicleLatitude, oldDepart.VehicleLongitude},
+		}
+		allBusLatLong = append(allBusLatLong, []float64{oldDepart.VehicleLatitude, oldDepart.VehicleLongitude})
 		newDepartureList = append(newDepartureList, newDepartureType{
 			Actual:           oldDepart.Actual,
 			BlockNumber:      oldDepart.BlockNumber,
@@ -200,7 +212,7 @@ func translateDepartureType(o *metrotransit.Stop, scale int, size string) *newSt
 			DepartureTime:    oldDepart.DepartureTime.String(),
 			Description:      oldDepart.Description,
 			Gate:             oldDepart.Gate,
-			Map:              mapHelper(o.Details.Latitude, o.Details.Longitude, oldDepart.VehicleLatitude, oldDepart.VehicleLongitude, scale, size),
+			Map:              mapHelper(o.Details.Latitude, o.Details.Longitude, busLatLong, scale, size),
 			Route:            oldDepart.Route,
 			RouteDirection:   oldDepart.RouteDirection,
 			Terminal:         oldDepart.Terminal,
@@ -214,6 +226,7 @@ func translateDepartureType(o *metrotransit.Stop, scale int, size string) *newSt
 		StopID:     o.StopID,
 		UpdateTime: o.UpdateTime,
 		Departures: newDepartureList,
+		FullMap:    mapHelper(o.Details.Latitude, o.Details.Longitude, allBusLatLong, scale, size),
 		Details: newDetailsType{
 			ID:                 o.Details.ID,
 			Code:               o.Details.Code,
