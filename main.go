@@ -15,6 +15,7 @@ var (
 	env              metrotransit.Env
 	googleMapsAPIKey string
 	staticFilePath   string
+	cors             string
 )
 
 func main() {
@@ -30,12 +31,24 @@ func main() {
 			Value:  9999,
 			EnvVar: "LISTEN_PORT",
 		},
+		cli.BoolTFlag{
+			Name:   "compression",
+			Usage:  "Use compression",
+			EnvVar: "COMPRESSION",
+		},
 		cli.StringFlag{
 			Name:        "static-file-path",
 			Usage:       "If defined, this will serve files from specified `path`",
 			Value:       "",
 			EnvVar:      "STATIC_FILE_PATH",
 			Destination: &staticFilePath,
+		},
+		cli.StringFlag{
+			Name:        "cors",
+			Usage:       "Sets the CORS attribute.",
+			Value:       "*",
+			EnvVar:      "CORS",
+			Destination: &cors,
 		},
 		cli.StringFlag{
 			Name:        "google-maps-api-key",
@@ -98,6 +111,7 @@ func appEntry(c *cli.Context) {
 	pgDb := c.String("pg-db")
 	pgPort := c.String("pg-port")
 	pgSSLMode := c.String("pg-ssl-mode")
+	compression := c.BoolT("compression")
 
 	switch strings.ToLower(c.String("log-level")) {
 	case "debug":
@@ -127,9 +141,13 @@ func appEntry(c *cli.Context) {
 
 	env = metrotransit.Env{DS: ds}
 
+	h := routeHandler
+	if compression {
+		h = fasthttp.CompressHandler(h)
+	}
 	go func() {
 		log.Infof("starting on port %d", port)
-		if err := fasthttp.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", port), routeHandler); err != nil {
+		if err := fasthttp.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", port), h); err != nil {
 			log.Fatalf("error in ListenAndServe: %s", err)
 		}
 	}()

@@ -140,22 +140,22 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 })
 
 type newStopType struct {
+	StopID     int                `json:"stop_id"`
 	Departures []newDepartureType `json:"departures"`
 	Details    newDetailsType     `json:"stop_details"`
 	FullMap    string             `json:"full_map"`
-	StopID     int                `json:"stop_id"`
 	UpdateTime time.Time          `json:"update_time"`
 }
 
 type newDepartureType struct {
+	DepartureTime    string  `json:"departure_time"`
+	Route            string  `json:"route"`
 	Actual           bool    `json:"actual"`
 	BlockNumber      int     `json:"block_number"`
 	DepartureText    string  `json:"departure_text"`
-	DepartureTime    string  `json:"departure_time"`
 	Description      string  `json:"description"`
 	Gate             string  `json:"gate"`
 	Map              string  `json:"map,omitempty"`
-	Route            string  `json:"route"`
 	RouteDirection   string  `json:"route_direction"`
 	Terminal         string  `json:"terminal"`
 	VehicleHeading   int     `json:"vehicle_heading"`
@@ -286,8 +286,29 @@ func executeQuery(query string, schema graphql.Schema) *graphql.Result {
 	return result
 }
 
+type jsonQueryBody struct {
+	Query string `json:"query"`
+}
+
 func graphqlHandler(ctx *fasthttp.RequestCtx) {
-	result := executeQuery(string(ctx.QueryArgs().Peek("query")), schema)
+	var query string
+	switch string(ctx.Method()) {
+	case "GET":
+		query = string(ctx.QueryArgs().Peek("query"))
+	case "POST":
+		switch string(ctx.Request.Header.Peek("Content-Type")) {
+		case "application/json":
+			queryStruct := &jsonQueryBody{}
+			if err := json.Unmarshal(ctx.PostBody(), queryStruct); err != nil {
+				log.Error(err)
+				return
+			}
+			query = queryStruct.Query
+		default:
+			query = string(ctx.PostBody())
+		}
+	}
+	result := executeQuery(query, schema)
 	pretty := string(ctx.QueryArgs().Peek("pretty"))
 
 	enc := json.NewEncoder(ctx)
